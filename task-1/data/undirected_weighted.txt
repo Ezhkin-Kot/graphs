@@ -1,0 +1,13 @@
+# Undirected weighted graph: 9 vertices, self-loop at D, isolated vertex I.
+UNDIRECTED
+A,B,C,D,E,F,G,H,I
+A,B,3.0,-
+A,C,2.5,-
+B,D,1.0,-
+C,D,4.2,-
+D,D,0.0,loop
+D,E,5.5,-
+E,F,2.0,-
+F,G,3.3,-
+G,H,1.8,-
+H,E,6.0,-
