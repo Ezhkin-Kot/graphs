@@ -4,19 +4,29 @@ use std::io::{self, BufRead, Write};
 use task_1::{Graph, GraphError};
 
 fn main() {
-    let mut graph = match env::args().nth(1) {
-        Some(path) => match Graph::from_file(&path) {
+    let mut graph = env::args()
+        .nth(1)
+        .and_then(|path| match Graph::from_file(&path) {
             Ok(g) => {
                 println!("Loaded graph from file '{path}'.");
-                g
+                Some(g)
             }
             Err(e) => {
-                eprintln!("Failed to load graph from '{path}': {e}. Using empty graph.");
-                Graph::default()
+                eprintln!("Failed to load graph from '{path}': {e}. Using an empty graph.");
+                None
             }
-        },
-        None => Graph::default(),
-    };
+        })
+        .unwrap_or_else(|| {
+            println!("Creating a new graph.");
+            print!("Directed or undirected? [d/u]: ");
+            io::stdout().flush().ok();
+            let mut line = String::new();
+            io::stdin().read_line(&mut line).ok();
+            Graph::new(matches!(
+                line.trim().to_lowercase().as_str(),
+                "d" | "directed"
+            ))
+        });
 
     println!("Adjacency list CLI. Type 'help' for the list of commands.");
 
@@ -81,6 +91,18 @@ fn main() {
                 })
             }
 
+            ["common-neighbors", a, b] | ["cn", a, b] => match graph.common_neighbors(a, b) {
+                Ok(common) if common.is_empty() => {
+                    println!("Vertices '{a}' and '{b}' have no common neighbor.")
+                }
+                Ok(common) => println!(
+                    "Vertices '{a}' and '{b}' have {} common neighbor(s): {}",
+                    common.len(),
+                    common.join(", ")
+                ),
+                Err(e) => eprintln!("Error: {e}"),
+            },
+
             ["save", path] | ["s", path] | ["w", path] => match graph.save_to_file_serialized(path)
             {
                 Ok(()) => println!("Graph saved to '{path}' (reloadable format)."),
@@ -134,10 +156,11 @@ fn print_help() {
     println!("  remove-vertex <name>");
     println!("  add-edge <from> <to> [weight] [label]");
     println!("  remove-edge <from> <to>");
-    println!("  print              - show the adjacency list");
-    println!("  edges              - show the edge list");
-    println!("  save <path>        - save the graph to a file (can be loaded back)");
-    println!("  save-text <path>   - save the adjacency list in a human-readable form");
-    println!("  load <path>        - load a graph from a file (replaces the current one)");
+    println!("  common-neighbors <a> <b> - list vertices adjacent to both <a> and <b>");
+    println!("  print                    - show the adjacency list");
+    println!("  edges                    - show the edge list");
+    println!("  save <path>              - save the graph to a file (can be loaded back)");
+    println!("  save-text <path>         - save the adjacency list in a human-readable form");
+    println!("  load <path>              - load a graph from a file (replaces the current one)");
     println!("  help, exit / quit");
 }

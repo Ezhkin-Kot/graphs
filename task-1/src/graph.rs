@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::error::Error;
 use std::fmt;
 use std::fs;
@@ -215,6 +216,27 @@ impl Graph {
         let mut v: Vec<&str> = self.adjacency.keys().map(String::as_str).collect();
         v.sort_unstable();
         v
+    }
+
+    /// Returns the neighbors of a vertex
+    pub fn neighbors(&self, name: &str) -> Result<Vec<&str>, GraphError> {
+        let neighbors = self
+            .adjacency
+            .get(name)
+            .ok_or_else(|| GraphError::VertexNotFound(name.to_string()))?;
+        let mut result: Vec<&str> = neighbors.keys().map(String::as_str).collect();
+        result.sort_unstable();
+        Ok(result)
+    }
+
+    /// Returns the vertices adjacent to both `a` and `b`.
+    pub fn common_neighbors(&self, a: &str, b: &str) -> Result<Vec<&str>, GraphError> {
+        let a_neighbors = self.neighbors(a)?;
+        let b_neighbors: HashSet<&str> = self.neighbors(b)?.into_iter().collect();
+        Ok(a_neighbors
+            .into_iter()
+            .filter(|v| b_neighbors.contains(v))
+            .collect())
     }
 
     /// Creates a list of edges from adjacency list.
@@ -529,6 +551,26 @@ mod tests {
         assert_eq!(reloaded.is_directed(), original.is_directed());
         assert_eq!(reloaded.vertices(), original.vertices());
         assert_eq!(reloaded.edge_list(), original.edge_list());
+    }
+
+    #[test]
+    fn common_neighbors_finds_shared_vertices() {
+        let g = Graph::from_edges(
+            false,
+            &[
+                ("A", "C", None, None),
+                ("B", "C", None, None),
+                ("A", "D", None, None),
+                ("B", "E", None, None),
+            ],
+        )
+        .unwrap();
+        assert_eq!(g.common_neighbors("A", "B").unwrap(), vec!["C"]);
+        assert!(g.common_neighbors("A", "E").unwrap().is_empty());
+        assert!(matches!(
+            g.common_neighbors("A", "X"),
+            Err(GraphError::VertexNotFound(_))
+        ));
     }
 
     #[test]
