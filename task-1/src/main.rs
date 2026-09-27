@@ -103,6 +103,15 @@ fn main() {
                 Err(e) => eprintln!("Error: {e}"),
             },
 
+            ["leaves"] | ["lv"] => {
+                let leaves = graph.leaves();
+                if leaves.is_empty() {
+                    println!("(no leaf vertices)");
+                } else {
+                    println!("Leaf vertices (degree 1): {}", leaves.join(", "));
+                }
+            }
+
             ["save", path] | ["s", path] | ["w", path] => match graph.save_to_file_serialized(path)
             {
                 Ok(()) => println!("Graph saved to '{path}' (reloadable format)."),
@@ -157,6 +166,7 @@ fn print_help() {
     println!("  add-edge <from> <to> [weight] [label]");
     println!("  remove-edge <from> <to>");
     println!("  common-neighbors <a> <b> - list vertices adjacent to both <a> and <b>");
+    println!("  leaves                   - list leaf vertices (degree 1)");
     println!("  print                    - show the adjacency list");
     println!("  edges                    - show the edge list");
     println!("  save <path>              - save the graph to a file (can be loaded back)");

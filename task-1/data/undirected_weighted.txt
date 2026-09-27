@@ -1,4 +1,4 @@
-# Undirected weighted graph: 9 vertices, self-loop at D, isolated vertex I.
+# Неориентированный взвешенный граф: 9 вершин, петля у D, изолированные I.
 UNDIRECTED
 A,B,C,D,E,F,G,H,I
 A,B,3.0,-

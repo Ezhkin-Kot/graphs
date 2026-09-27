@@ -239,6 +239,32 @@ impl Graph {
             .collect())
     }
 
+    /// Returns the degree of a vertex
+    pub fn degree(&self, name: &str) -> Result<usize, GraphError> {
+        let out_degree = self.neighbors(name)?.len();
+        if !self.directed {
+            return Ok(out_degree);
+        }
+        let in_degree = self
+            .adjacency
+            .values()
+            .filter(|neighbors| neighbors.contains_key(name))
+            .count();
+        Ok(out_degree + in_degree)
+    }
+
+    /// Returns all leaf (hanging) vertices (vertices of degree 1).
+    pub fn leaves(&self) -> Vec<&str> {
+        self.vertices()
+            .into_iter()
+            .filter(|v| {
+                self.degree(v)
+                    .expect("vertex from self.vertices() always exists")
+                    == 1
+            })
+            .collect()
+    }
+
     /// Creates a list of edges from adjacency list.
     pub fn edge_list(&self) -> Vec<Edge> {
         let mut edges = Vec::new();
@@ -571,6 +597,26 @@ mod tests {
             g.common_neighbors("A", "X"),
             Err(GraphError::VertexNotFound(_))
         ));
+    }
+
+    #[test]
+    fn leaves_undirected_are_degree_one_vertices() {
+        let g =
+            Graph::from_edges(false, &[("A", "B", None, None), ("B", "C", None, None)]).unwrap();
+        assert_eq!(g.leaves(), vec!["A", "C"]);
+    }
+
+    #[test]
+    fn leaves_directed_use_total_degree() {
+        // A -> B -> C: B has out-degree 1 and in-degree 1 (total 2), so it's not a leaf.
+        let g = Graph::from_edges(true, &[("A", "B", None, None), ("B", "C", None, None)]).unwrap();
+        assert_eq!(g.leaves(), vec!["A", "C"]);
+    }
+
+    #[test]
+    fn isolated_vertex_is_not_a_leaf() {
+        let g = Graph::with_vertices(false, &["A", "B", "C"]);
+        assert!(g.leaves().is_empty());
     }
 
     #[test]
