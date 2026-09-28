@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "task-1"
+name = "graph"
 version = "0.1.0"

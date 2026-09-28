@@ -1,7 +1,7 @@
 use std::env;
 use std::io::{self, BufRead, Write};
 
-use task_1::{Graph, GraphError};
+use graph::{Graph, GraphError};
 
 fn main() {
     let mut graph = env::args()
