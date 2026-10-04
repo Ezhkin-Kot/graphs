@@ -265,6 +265,28 @@ impl Graph {
             .collect()
     }
 
+    /// Returns a copy of the graph with all odd-degree vertices removed.
+    pub fn remove_odd_degree_vertices(&self) -> Self {
+        let odd_degree_vertices: Vec<&str> = self
+            .vertices()
+            .into_iter()
+            .filter(|v| {
+                self.degree(v)
+                    .expect("vertex from self.vertices() always exists")
+                    % 2
+                    == 1
+            })
+            .collect();
+
+        let mut result = self.clone();
+        for v in odd_degree_vertices {
+            result
+                .remove_vertex(v)
+                .expect("vertex from self.vertices() always exists");
+        }
+        result
+    }
+
     /// Creates a list of edges from adjacency list.
     pub fn edge_list(&self) -> Vec<Edge> {
         let mut edges = Vec::new();
@@ -617,6 +639,58 @@ mod tests {
     fn isolated_vertex_is_not_a_leaf() {
         let g = Graph::with_vertices(false, &["A", "B", "C"]);
         assert!(g.leaves().is_empty());
+    }
+
+    #[test]
+    fn remove_odd_degree_vertices_drops_only_odd_degree_ones() {
+        // A-B-C-D-A is a 4-cycle (every vertex has degree 2), plus a pendant
+        // edge C-E giving C degree 3 and E degree 1.
+        let g = Graph::from_edges(
+            false,
+            &[
+                ("A", "B", None, None),
+                ("B", "C", None, None),
+                ("C", "D", None, None),
+                ("D", "A", None, None),
+                ("C", "E", None, None),
+            ],
+        )
+        .unwrap();
+
+        let result = g.remove_odd_degree_vertices();
+        assert_eq!(result.vertices(), vec!["A", "B", "D"]);
+        assert!(result.has_edge("A", "B"));
+        assert!(result.has_edge("D", "A"));
+        assert!(!result.has_vertex("C"));
+        assert!(!result.has_vertex("E"));
+    }
+
+    #[test]
+    fn remove_odd_degree_vertices_keeps_vertices_turned_odd_by_removal() {
+        // A-B-C path: A and C have degree 1 (odd), B has degree 2 (even).
+        // Removing A and C leaves B isolated (degree 0), which stays.
+        let g =
+            Graph::from_edges(false, &[("A", "B", None, None), ("B", "C", None, None)]).unwrap();
+
+        let result = g.remove_odd_degree_vertices();
+        assert_eq!(result.vertices(), vec!["B"]);
+        assert_eq!(result.edge_count(), 0);
+    }
+
+    #[test]
+    fn remove_odd_degree_vertices_keeps_graph_with_only_even_degrees() {
+        let g = Graph::from_edges(
+            false,
+            &[
+                ("A", "B", None, None),
+                ("B", "C", None, None),
+                ("C", "A", None, None),
+            ],
+        )
+        .unwrap();
+        let result = g.remove_odd_degree_vertices();
+        assert_eq!(result.vertices(), g.vertices());
+        assert_eq!(result.edge_list(), g.edge_list());
     }
 
     #[test]
