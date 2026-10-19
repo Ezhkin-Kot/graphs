@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::VecDeque;
 use std::error::Error;
 use std::fmt;
 use std::fs;
@@ -263,6 +264,37 @@ impl Graph {
                     == 1
             })
             .collect()
+    }
+
+    /// Returns the number of arcs in a shortest path from `from` to `to`
+    pub fn shortest_path_length(&self, from: &str, to: &str) -> Result<Option<usize>, GraphError> {
+        if !self.has_vertex(from) {
+            return Err(GraphError::VertexNotFound(from.to_string()));
+        }
+        if !self.has_vertex(to) {
+            return Err(GraphError::VertexNotFound(to.to_string()));
+        }
+        if from == to {
+            return Ok(Some(0));
+        }
+
+        // BFS
+        let mut visited: HashSet<&str> = HashSet::new();
+        visited.insert(from);
+        let mut queue: VecDeque<(&str, usize)> = VecDeque::new();
+        queue.push_back((from, 0));
+
+        while let Some((current, dist)) = queue.pop_front() {
+            for neighbor in self.neighbors(current)? {
+                if neighbor == to {
+                    return Ok(Some(dist + 1));
+                }
+                if visited.insert(neighbor) {
+                    queue.push_back((neighbor, dist + 1));
+                }
+            }
+        }
+        Ok(None)
     }
 
     /// Returns a copy of the graph with all odd-degree vertices removed.
@@ -691,6 +723,69 @@ mod tests {
         let result = g.remove_odd_degree_vertices();
         assert_eq!(result.vertices(), g.vertices());
         assert_eq!(result.edge_list(), g.edge_list());
+    }
+
+    #[test]
+    fn shortest_path_length_same_vertex_is_zero() {
+        let g = Graph::with_vertices(false, &["A"]);
+        assert_eq!(g.shortest_path_length("A", "A").unwrap(), Some(0));
+    }
+
+    #[test]
+    fn shortest_path_length_counts_arcs_along_a_chain() {
+        let g = Graph::from_edges(
+            false,
+            &[
+                ("A", "B", None, None),
+                ("B", "C", None, None),
+                ("C", "D", None, None),
+            ],
+        )
+        .unwrap();
+        assert_eq!(g.shortest_path_length("A", "D").unwrap(), Some(3));
+    }
+
+    #[test]
+    fn shortest_path_length_picks_the_shorter_of_two_routes() {
+        // A-B-C is a shortcut (length 2); A-D-E-C is longer (length 3).
+        let g = Graph::from_edges(
+            false,
+            &[
+                ("A", "B", None, None),
+                ("B", "C", None, None),
+                ("A", "D", None, None),
+                ("D", "E", None, None),
+                ("E", "C", None, None),
+            ],
+        )
+        .unwrap();
+        assert_eq!(g.shortest_path_length("A", "C").unwrap(), Some(2));
+    }
+
+    #[test]
+    fn shortest_path_length_respects_direction() {
+        let g = Graph::from_edges(true, &[("A", "B", None, None), ("B", "C", None, None)]).unwrap();
+        assert_eq!(g.shortest_path_length("A", "C").unwrap(), Some(2));
+        assert_eq!(g.shortest_path_length("C", "A").unwrap(), None);
+    }
+
+    #[test]
+    fn shortest_path_length_is_none_when_unreachable() {
+        let g = Graph::with_vertices(false, &["A", "B"]);
+        assert_eq!(g.shortest_path_length("A", "B").unwrap(), None);
+    }
+
+    #[test]
+    fn shortest_path_length_rejects_missing_vertices() {
+        let g = Graph::with_vertices(false, &["A"]);
+        assert!(matches!(
+            g.shortest_path_length("A", "X"),
+            Err(GraphError::VertexNotFound(_))
+        ));
+        assert!(matches!(
+            g.shortest_path_length("X", "A"),
+            Err(GraphError::VertexNotFound(_))
+        ));
     }
 
     #[test]

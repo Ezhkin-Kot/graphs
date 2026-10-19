@@ -117,6 +117,14 @@ fn main() {
                 println!("Odd-degree vertices removed.");
             }
 
+            ["shortest-path", u, v] | ["sp", u, v] => match graph.shortest_path_length(u, v) {
+                Ok(Some(len)) => {
+                    println!("Shortest path from '{u}' to '{v}' has {len} arc(s).")
+                }
+                Ok(None) => println!("Vertex '{v}' is unreachable from '{u}'."),
+                Err(e) => eprintln!("Error: {e}"),
+            },
+
             ["save", path] | ["s", path] | ["w", path] => match graph.save_to_file_serialized(path)
             {
                 Ok(()) => println!("Graph saved to '{path}' (reloadable format)."),
@@ -173,6 +181,7 @@ fn print_help() {
     println!("  common-neighbors <a> <b> - list vertices adjacent to both <a> and <b>");
     println!("  leaves                   - list leaf vertices (degree 1)");
     println!("  remove-odd-degree        - remove all odd-degree vertices (single pass)");
+    println!("  shortest-path <u> <v>    - number of arcs in a shortest path from <u> to <v>");
     println!("  print                    - show the adjacency list");
     println!("  edges                    - show the edge list");
     println!("  save <path>              - save the graph to a file (can be loaded back)");
