@@ -125,6 +125,14 @@ fn main() {
                 Err(e) => eprintln!("Error: {e}"),
             },
 
+            ["scc"] => {
+                let sccs = graph.strongly_connected_components();
+                println!("Strongly connected components: {}", sccs.len());
+                for component in &sccs {
+                    println!("  {}", component.join(", "));
+                }
+            }
+
             ["save", path] | ["s", path] | ["w", path] => match graph.save_to_file_serialized(path)
             {
                 Ok(()) => println!("Graph saved to '{path}' (reloadable format)."),
@@ -182,6 +190,7 @@ fn print_help() {
     println!("  leaves                   - list leaf vertices (degree 1)");
     println!("  remove-odd-degree        - remove all odd-degree vertices (single pass)");
     println!("  shortest-path <u> <v>    - number of arcs in a shortest path from <u> to <v>");
+    println!("  scc                      - list strongly connected components");
     println!("  print                    - show the adjacency list");
     println!("  edges                    - show the edge list");
     println!("  save <path>              - save the graph to a file (can be loaded back)");

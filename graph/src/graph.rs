@@ -319,6 +319,81 @@ impl Graph {
         result
     }
 
+    /// Depth-first search from `start` that appends each vertex to
+    /// `finish_order` after all of its neighbors have been visited
+    /// (post-order), as required by the first pass of Kosaraju's algorithm.
+    fn dfs_finish_order<'a>(
+        &'a self,
+        start: &'a str,
+        visited: &mut HashSet<&'a str>,
+        finish_order: &mut Vec<&'a str>,
+    ) {
+        visited.insert(start);
+        for neighbor in self
+            .neighbors(start)
+            .expect("vertex from self.vertices() always exists")
+        {
+            if !visited.contains(neighbor) {
+                self.dfs_finish_order(neighbor, visited, finish_order);
+            }
+        }
+        finish_order.push(start);
+    }
+
+    /// Builds the adjacency list of the reversed graph.
+    fn reverse_adjacency(&self) -> HashMap<&str, Vec<&str>> {
+        let mut reverse: HashMap<&str, Vec<&str>> = self
+            .vertices()
+            .into_iter()
+            .map(|v| (v, Vec::new()))
+            .collect();
+        for from in self.vertices() {
+            for to in self
+                .neighbors(from)
+                .expect("vertex from self.vertices() always exists")
+            {
+                reverse.get_mut(to).unwrap().push(from);
+            }
+        }
+        reverse
+    }
+
+    /// Returns the strongly connected components of the graph with Kosaraju's algorithm.
+    pub fn strongly_connected_components(&self) -> Vec<Vec<&str>> {
+        let mut visited: HashSet<&str> = HashSet::new();
+        let mut finish_order: Vec<&str> = Vec::new();
+        for v in self.vertices() {
+            if !visited.contains(v) {
+                self.dfs_finish_order(v, &mut visited, &mut finish_order);
+            }
+        }
+
+        let reverse_adjacency = self.reverse_adjacency();
+        let mut visited: HashSet<&str> = HashSet::new();
+        let mut components: Vec<Vec<&str>> = Vec::new();
+        for &v in finish_order.iter().rev() {
+            if visited.contains(v) {
+                continue;
+            }
+            let mut component = Vec::new();
+            let mut stack = vec![v];
+            while let Some(current) = stack.pop() {
+                if !visited.insert(current) {
+                    continue;
+                }
+                component.push(current);
+                for &next in &reverse_adjacency[current] {
+                    if !visited.contains(next) {
+                        stack.push(next);
+                    }
+                }
+            }
+            component.sort_unstable();
+            components.push(component);
+        }
+        components
+    }
+
     /// Creates a list of edges from adjacency list.
     pub fn edge_list(&self) -> Vec<Edge> {
         let mut edges = Vec::new();
@@ -723,6 +798,63 @@ mod tests {
         let result = g.remove_odd_degree_vertices();
         assert_eq!(result.vertices(), g.vertices());
         assert_eq!(result.edge_list(), g.edge_list());
+    }
+
+    #[test]
+    fn scc_directed_cycle_is_one_component() {
+        // A -> B -> C -> A: every vertex can reach every other, one SCC.
+        let g = Graph::from_edges(
+            true,
+            &[
+                ("A", "B", None, None),
+                ("B", "C", None, None),
+                ("C", "A", None, None),
+            ],
+        )
+        .unwrap();
+        let sccs = g.strongly_connected_components();
+        assert_eq!(sccs.len(), 1);
+        assert_eq!(sccs[0], vec!["A", "B", "C"]);
+    }
+
+    #[test]
+    fn scc_dag_has_one_component_per_vertex() {
+        // A -> B -> C with no way back: no cycles, so every vertex is its
+        // own strongly connected component.
+        let g = Graph::from_edges(true, &[("A", "B", None, None), ("B", "C", None, None)]).unwrap();
+        let sccs = g.strongly_connected_components();
+        assert_eq!(sccs.len(), 3);
+    }
+
+    #[test]
+    fn scc_finds_multiple_components_and_connecting_bridge() {
+        // Two cycles A<->B and C<->D, joined by a one-way bridge B -> C.
+        // The bridge doesn't merge them: still 2 components.
+        let g = Graph::from_edges(
+            true,
+            &[
+                ("A", "B", None, None),
+                ("B", "A", None, None),
+                ("B", "C", None, None),
+                ("C", "D", None, None),
+                ("D", "C", None, None),
+            ],
+        )
+        .unwrap();
+        let mut sccs = g.strongly_connected_components();
+        sccs.sort_unstable();
+        assert_eq!(sccs, vec![vec!["A", "B"], vec!["C", "D"]]);
+    }
+
+    #[test]
+    fn scc_undirected_matches_connected_components() {
+        // Undirected graph: A-B-C connected, D isolated -> 2 components.
+        let mut g =
+            Graph::from_edges(false, &[("A", "B", None, None), ("B", "C", None, None)]).unwrap();
+        g.add_vertex("D").unwrap();
+        let mut sccs = g.strongly_connected_components();
+        sccs.sort_unstable();
+        assert_eq!(sccs, vec![vec!["A", "B", "C"], vec!["D"]]);
     }
 
     #[test]
